@@ -141,6 +141,48 @@ resource "aws_s3_bucket_public_access_block" "mwaa" {
   ignore_public_acls      = true
 }
 
+resource "aws_s3_bucket_policy" "mwaa" {
+  count = var.create_s3_bucket ? 1 : 0
+
+  bucket = aws_s3_bucket.mwaa[0].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "denyOutdatedTLS"
+        Effect = "Deny"
+        Principal = "*"
+        Action = "s3:*"
+        Resource = [
+          "${aws_s3_bucket.mwaa[0].arn}/*",
+          aws_s3_bucket.mwaa[0].arn
+        ]
+        Condition = {
+          NumericLessThan = {
+            "s3:TlsVersion" = "1.2"
+          }
+        }
+      },
+      {
+        Sid    = "denyInsecureTransport"
+        Effect = "Deny"
+        Principal = "*"
+        Action = "s3:*"
+        Resource = [
+          "${aws_s3_bucket.mwaa[0].arn}/*",
+          aws_s3_bucket.mwaa[0].arn
+        ]
+        Condition = {
+          Bool = {
+            "aws:SecureTransport" = "false"
+          }
+        }
+      }
+    ]
+  })
+}
+
 # ---------------------------------------------------------------------------------------------------------------------
 # MWAA Security Group
 # ---------------------------------------------------------------------------------------------------------------------
